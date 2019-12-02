@@ -243,13 +243,13 @@ int main()
     {
         printf("semaphore value set %d\n ", semun.val);
     }
+    printf("buffersize is %d\n", Buffersize);
 
-     printf("\n\n================WORKING NOW===================\n\n");
+    printf("\n\n================WORKING NOW===================\n\n");
 
-     while (1)
-     {
-         printf("buffersize is %d\n",Buffersize);
-         sleep(2);
+    while (1)
+    {
+        sleep(6);
         //if buffer empty
         //produce
         //then send msg to consumer
@@ -259,15 +259,15 @@ int main()
         {
             printf("Buffer Empty producing\n");
             //create item
-            int item = rand()%100;
+            int item = rand() % 100;
             //insert item in shared memory buffer
             shmaddrstack[count] = item;
             (*shmaddrcount)++; // increment count of elements in buffer
-            printf("Produced %d %d,count is %d \n",item, shmaddrstack[count],*shmaddrcount);
+            printf("Produced %d %d,count is %d \n", item, shmaddrstack[count], *shmaddrcount);
             //send msg to consumer
             strcpy(message.mtext, "notfreeanymore");
-            message.mtype = 88;//anynumber for prod 
-            int send_val = msgsnd(msgqid, &message, sizeof(message.mtext), !IPC_NOWAIT);
+            message.mtype = 88; //anynumber for prod
+            int send_val = msgsnd(msgqid, &message, sizeof(message), !IPC_NOWAIT);
             if (send_val == -1)
                 perror("Errror in send");
         }
@@ -275,38 +275,40 @@ int main()
         //wait for msg from consumer
         //telling buffer is now not full
         //then produce
-        else if (count == Buffersize)
+        else if (count >= Buffersize)
         {
+            //reload count
+            count = *shmaddrcount;
             printf("Buffer full waiting !\n");
             //wait for msg from consumer
-            //77 is any number sent by consumer 
-            //can be replaced with pid 
-            int rec_val = msgrcv(msgqid, &message, sizeof(message.mtext),77, !IPC_NOWAIT);
+            //77 is any number sent by consumer
+            //can be replaced with pid
+            int rec_val = msgrcv(msgqid, &message, sizeof(message), 77, !IPC_NOWAIT);
             if (rec_val == -1)
                 perror("Error in receive");
             else
                 printf("\nMessage received: %s\n", message.mtext);
 
-            int item = rand()%100;
+            int item = rand() % 100;
             //insert item in shared memory buffer
             shmaddrstack[count] = item;
             (*shmaddrcount)++; // increment count of elements in buffer
-            printf("Produced %d %d,count is %d \n",item, shmaddrstack[count],*shmaddrcount);
-           
+            printf("Produced %d %d,count is %d \n", item, shmaddrstack[count], *shmaddrcount);
         }
         //if buffer not empty nor full
         //produce
         else
         {
-            printf("Free space producing :D\n");
-            int item = rand()%100;
+            //reload count
+            count = *shmaddrcount;
+            printf("Not empty nor full producing XD\n");
+            int item = rand() % 100;
             //insert item in shared memory buffer
             shmaddrstack[count] = item;
             (*shmaddrcount)++; // increment count of elements in buffer
-            printf("Produced %d %d,count is %d \n",item, shmaddrstack[count],*shmaddrcount);
-           
+            printf("Produced %d %d,count is %d \n", item, shmaddrstack[count], *shmaddrcount);
         }
-     }
+    }
 
     return 0;
 }
@@ -352,7 +354,7 @@ void handler(int signum)
     {
         printf("Success Shared Memory Freed\n");
     }
-     if (shmctl(shmidbuffersize, IPC_RMID, (struct shmid_ds *)0) == -1)
+    if (shmctl(shmidbuffersize, IPC_RMID, (struct shmid_ds *)0) == -1)
     {
         perror("Error Deleting Shared Memory !\n");
     }

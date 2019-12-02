@@ -19,7 +19,7 @@ struct msgbuff
 {
     long mtype;
     char mtext[70];
-};
+} message;
 
 /* arg for semctl system calls. */
 union Semun {
@@ -199,7 +199,7 @@ int main()
     }
 
     //shared memory address attach to process
-    int *shmaddrstack = shmat(shmidcount, (void *)0, 0);
+    int *shmaddrstack = shmat(shmidstack, (void *)0, 0);
     if (shmaddrstack == -1)
     {
         perror("Error in attaching memory");
@@ -213,7 +213,7 @@ int main()
     /////////////////////
     printf("buffersize is %d\n", *shmaddrbuffersize);
     printf("count is %d\n", *shmaddrcount);
-    printf("stack[1] is %d\n", shmaddrstack[1]);
+    // printf("stack[1] is %d\n", shmaddrstack[1]);
 
     /////////////////////
     //initialize semaphore
@@ -242,30 +242,80 @@ int main()
     {
         printf("semaphore value set %d\n ", semun.val);
     }
-    sleep(5);
 
-    /*
-    while(1){
-    
-    //if buffer empty
-    //wait for msg from producer
-    //telling that it has produced 
-    if()
+    printf("\n\n================WORKING NOW===================\n\n");
 
+    while (1)
+    {
+        sleep(3);
+        //if buffer empty
+        //wait for msg from producer
+        //telling that it has produced
+        //then consume
+        count = *shmaddrcount;
+        if (count == 0)
+        {
+            printf("Buffer Empty consumer waiting\n");
+
+            //waiting for message from producer
+            //88 is unique number for producer
+            //can be replaced with producer pid
+            int rec_val = msgrcv(msgqid, &message, sizeof(message), 88, !IPC_NOWAIT);
+            if (rec_val == -1)
+                perror("Error in receive");
+            else
+                printf("\nMessage received: %s\n", message.mtext);
+
+            //reload count
+            count = *shmaddrcount;
+            //consuming
+            int itemconsumed = -1;
+            itemconsumed = shmaddrstack[count-1];
+
+            //decrementing count 
+            (*shmaddrcount)--;
+            printf("Consumed item %d count now %d\n", itemconsumed,*shmaddrcount);
+        }
+        //if buffer full
+        //consume
+        //send a msg to producer telling buffer is no longer full
+        else if (count == Buffersize)
+        {
+            //reload count
+            count = *shmaddrcount;
+            printf("Buffer Full consuming and sending msg\n");
+             //consuming
+            int itemconsumed = -1;
+            itemconsumed = shmaddrstack[count-1];
+
+            //decrementing count 
+            (*shmaddrcount)--;
+            printf("Consumed item %d count now %d\n", itemconsumed,*shmaddrcount);
+      
+            //send msg to producer telling buffer now not full
+            //send msg to consumer
+            strcpy(message.mtext, "notfullanymore");
+            message.mtype = 77; //anynumber for consumer
+            int send_val = msgsnd(msgqid, &message, sizeof(message), !IPC_NOWAIT);
+            if (send_val == -1)
+                perror("Errror in send");
+        }
+        //if not empty nor full
+        //consume
+        else
+        {
+            //reload count
+            count = *shmaddrcount;
+            printf("Not empty nor full CONSUMING XD\n");
+              //consuming
+            int itemconsumed = -1;
+            itemconsumed = shmaddrstack[count-1];
+
+            //decrementing count 
+            (*shmaddrcount)--;
+            printf("Consumed item %d count now %d\n", itemconsumed,*shmaddrcount);
+        }
     }
-    //if buffer full
-    //consume
-    //send a msg to producer telling buffer is no longer full
-    else if(){
-
-    }
-    //if not empty nor full
-    //consume
-    else {
-
-    }
-    */
-
     return 0;
 }
 
@@ -280,7 +330,7 @@ void handler(int signum)
     }
     else
     {
-        printf("Success Message Queue Freed \n");
+        printf("\nSuccess Message Queue Freed \n");
     }
 
     //free Semaphore
@@ -302,7 +352,17 @@ void handler(int signum)
     {
         printf("Success Shared Memory Freed\n");
     }
+
     if (shmctl(shmidstack, IPC_RMID, (struct shmid_ds *)0) == -1)
+    {
+        perror("Error Deleting Shared Memory !\n");
+    }
+    else
+    {
+        printf("Success Shared Memory Freed\n");
+    }
+
+    if (shmctl(shmidbuffersize, IPC_RMID, (struct shmid_ds *)0) == -1)
     {
         perror("Error Deleting Shared Memory !\n");
     }
