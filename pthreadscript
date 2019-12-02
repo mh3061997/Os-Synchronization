@@ -1,0 +1,3 @@
+reset 
+gcc -pthread -o output producer_consumer.c
+./output
