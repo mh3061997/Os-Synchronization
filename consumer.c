@@ -83,35 +83,31 @@ key_t msgqid;
 int sem;
 //argument for sem ops
 union Semun semun;
-int shmid;
-
-struct Buffer
-{
-    int Buffersize;
-    int *Buffer;
-    int count;
-};
+int shmidstack;
+int shmidcount;
+int shmidbuffersize;
+int Buffersize;
+int *Buffer;
+int count;
 
 int main()
 {
+    sleep(3);
     //setting fn handler for sigint to free ipc
     /*HANDLER FN SEE DONT SEE CHANGES IN GLOBAL VAR
      AFTER HANDLER IS ASSIGNED
     */
     signal(SIGINT, handler);
 
-    //Buffer Initialization
-    struct Buffer *myBuffer;
-
-    sleep(1);
-
     //pid
     pid_t pid;
 
     //unique ipc key
-    key_t keymsg = ftok(getenv("PWD"), 6); //PWD path to current directory , 99 any unique number
-    key_t keyshm = ftok(getenv("PWD"), 5); //PWD path to current directory , 98 any unique number
-    key_t keysem = ftok(getenv("PWD"), 4); //PWD path to current directory , 97 any unique number
+    key_t keymsg = ftok(getenv("PWD"), 16);      //PWD path to current directory , 99 any unique number
+    key_t keyshmstack = ftok(getenv("PWD"), 15); //PWD path to current directory , 98 any unique number
+    key_t keyshmcount = ftok(getenv("PWD"), 13); //PWD path to current directory , 98 any unique number
+    key_t keysem = ftok(getenv("PWD"), 14);      //PWD path to current directory , 97 any unique number
+    key_t keybufsize = ftok(getenv("PWD"), 17);  //PWD path to current directory , 97 any unique number
 
     //initialize message queue
     //IPC_CREAT creates msg if not exist if exist return it's id
@@ -130,33 +126,96 @@ int main()
 
     //initialize shared memory
     //4096 is segment size
-    shmid = shmget(keyshm, sizeof(struct Buffer), IPC_CREAT | 0666);
-    if (shmid == -1)
+
+    //IF ERROR THEN DELETE SHARED MEMORY FIRST
+    //You cannot attach a segment that already exists with a larger size.
+    //So you need to remove it first or use a different key.
+
+    //Buffer Initialization
+
+    count = 0;
+
+    shmidcount = shmget(keyshmcount, sizeof(int), IPC_CREAT | 0666);
+    if (shmidcount == -1)
     {
         perror("Error in creating shared memory !");
         exit(-1);
     }
     else
     {
-        printf("Created Shared memory ID = %d\n", shmid);
+        printf("Created Shared memory ID = %d\n", shmidcount);
     }
 
     //shared memory address attach to process
-    void *shmaddr = shmat(shmid, (void *)0, 0);
-    //myBuffer=shmaddr;
-    struct Buffer *mybuf = shmaddr;
-    printf("its : %d",mybuf->Buffer[0]);
-
-    if (shmaddr == -1)
+    int *shmaddrcount = shmat(shmidcount, (void *)0, 0);
+    if (shmaddrcount == -1)
     {
         perror("Error in attaching memory");
         exit(-1);
     }
     else
     {
-        printf("Shared memory attached at address %x\n", shmaddr);
+        printf("Shared memory attached at address %x\n", shmaddrcount);
     }
 
+    /////
+    shmidbuffersize = shmget(keybufsize, sizeof(int), IPC_CREAT | 0666);
+    if (shmidbuffersize == -1)
+    {
+        perror("Error in creating shared memory !");
+        exit(-1);
+    }
+    else
+    {
+        printf("Created Shared memory ID = %d\n", shmidbuffersize);
+    }
+
+    //shared memory address attach to process
+    int *shmaddrbuffersize = shmat(shmidbuffersize, (void *)0, 0);
+    if (shmaddrbuffersize == -1)
+    {
+        perror("Error in attaching memory");
+        exit(-1);
+    }
+    else
+    {
+        printf("Shared memory attached at address %x\n", shmaddrbuffersize);
+    }
+    /////
+    Buffersize = *shmaddrbuffersize;
+    printf("Buffersize is %d \n", Buffersize);
+    printf("size is %d \n", sizeof(int) * Buffersize);
+
+    int totalsize = sizeof(int) * Buffersize;
+    shmidstack = shmget(keyshmstack, totalsize, IPC_CREAT | 0666);
+    if (shmidstack == -1)
+    {
+        perror("Error in creating shared memory !");
+        exit(-1);
+    }
+    else
+    {
+        printf("Created Shared memory ID = %d\n", shmidstack);
+    }
+
+    //shared memory address attach to process
+    int *shmaddrstack = shmat(shmidcount, (void *)0, 0);
+    if (shmaddrstack == -1)
+    {
+        perror("Error in attaching memory");
+        exit(-1);
+    }
+    else
+    {
+        printf("Shared memory attached at address %x\n", shmaddrstack);
+    }
+
+    /////////////////////
+    printf("buffersize is %d\n", *shmaddrbuffersize);
+    printf("count is %d\n", *shmaddrcount);
+    printf("stack[1] is %d\n", shmaddrstack[1]);
+
+    /////////////////////
     //initialize semaphore
 
     //1 is number of semaphores
@@ -217,7 +276,7 @@ void handler(int signum)
     //free message queue
     if (msgctl(msgqid, IPC_RMID, (struct msqid_ds *)0) == -1)
     {
-        printf("Error Deleting msg queue  !\n");
+        printf("\nError Deleting msg queue  !\n");
     }
     else
     {
@@ -227,8 +286,7 @@ void handler(int signum)
     //free Semaphore
     if (semctl(sem, 0, SETVAL, semun) == -1)
     {
-        perror("Error freeing semaphore !\n");
-        exit(-1);
+        printf("Error Deleting semaphore !\n");
     }
     else
     {
@@ -236,7 +294,7 @@ void handler(int signum)
     }
 
     //free shared memory
-    if (shmctl(shmid, IPC_RMID, (struct shmid_ds *)0) == -1)
+    if (shmctl(shmidcount, IPC_RMID, (struct shmid_ds *)0) == -1)
     {
         perror("Error Deleting Shared Memory !\n");
     }
@@ -244,4 +302,13 @@ void handler(int signum)
     {
         printf("Success Shared Memory Freed\n");
     }
+    if (shmctl(shmidstack, IPC_RMID, (struct shmid_ds *)0) == -1)
+    {
+        perror("Error Deleting Shared Memory !\n");
+    }
+    else
+    {
+        printf("Success Shared Memory Freed\n");
+    }
+    exit(1);
 }

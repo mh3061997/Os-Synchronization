@@ -1,0 +1,4 @@
+#!/bin/bash
+
+gcc consumer.c -o cons
+./cons
