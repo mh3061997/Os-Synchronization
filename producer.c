@@ -10,7 +10,7 @@
 #include <sys/sem.h>
 #include <sys/msg.h>
 #include <signal.h>
-
+#include <math.h>
 //sigint handler declaration
 void handler(int signum);
 
@@ -19,7 +19,7 @@ struct msgbuff
 {
     long mtype;
     char mtext[70];
-};
+} message;
 
 /* arg for semctl system calls. */
 union Semun {
@@ -97,7 +97,7 @@ int main()
      AFTER HANDLER IS ASSIGNED
     */
     signal(SIGINT, handler);
-   // sleep(2); // will be deleted just to invoke sigint to delete shm
+    // sleep(2); // will be deleted just to invoke sigint to delete shm
 
     //pid
     pid_t pid;
@@ -107,7 +107,7 @@ int main()
     key_t keyshmstack = ftok(getenv("PWD"), 15); //PWD path to current directory , 98 any unique number
     key_t keyshmcount = ftok(getenv("PWD"), 13); //PWD path to current directory , 98 any unique number
     key_t keysem = ftok(getenv("PWD"), 14);      //PWD path to current directory , 97 any unique number
-    key_t keybufsize = ftok(getenv("PWD"), 17);      //PWD path to current directory , 97 any unique number
+    key_t keybufsize = ftok(getenv("PWD"), 17);  //PWD path to current directory , 97 any unique number
 
     //initialize message queue
     //IPC_CREAT creates msg if not exist if exist return it's id
@@ -136,7 +136,7 @@ int main()
     scanf("%d", &Buffersize);
     count = 0;
 
-    shmidcount = shmget(keyshmcount,sizeof(int), IPC_CREAT | 0666);
+    shmidcount = shmget(keyshmcount, sizeof(int), IPC_CREAT | 0666);
     if (shmidcount == -1)
     {
         perror("Error in creating shared memory !");
@@ -146,9 +146,9 @@ int main()
     {
         printf("Created Shared memory ID = %d\n", shmidcount);
     }
-    printf("size is %d \n",sizeof(int) * Buffersize);
+    printf("size is %d \n", sizeof(int) * Buffersize);
 
-//shared memory address attach to process
+    //shared memory address attach to process
     int *shmaddrcount = shmat(shmidcount, (void *)0, 0);
     if (shmaddrcount == -1)
     {
@@ -160,8 +160,8 @@ int main()
         printf("Shared memory attached at address %x\n", shmaddrcount);
     }
 
-/////
- shmidbuffersize = shmget(keybufsize,sizeof(int), IPC_CREAT | 0666);
+    /////
+    shmidbuffersize = shmget(keybufsize, sizeof(int), IPC_CREAT | 0666);
     if (shmidbuffersize == -1)
     {
         perror("Error in creating shared memory !");
@@ -183,10 +183,10 @@ int main()
     {
         printf("Shared memory attached at address %x\n", shmaddrbuffersize);
     }
-/////
+    /////
 
-    int totalsize=sizeof(int) * Buffersize;
-    shmidstack = shmget(keyshmstack,totalsize, IPC_CREAT | 0666);
+    int totalsize = sizeof(int) * Buffersize;
+    shmidstack = shmget(keyshmstack, totalsize, IPC_CREAT | 0666);
     if (shmidstack == -1)
     {
         perror("Error in creating shared memory !");
@@ -198,7 +198,7 @@ int main()
     }
 
     //shared memory address attach to process
-    int *shmaddrstack = shmat(shmidcount, (void *)0, 0);
+    int *shmaddrstack = shmat(shmidstack, (void *)0, 0);
     if (shmaddrstack == -1)
     {
         perror("Error in attaching memory");
@@ -209,20 +209,18 @@ int main()
         printf("Shared memory attached at address %x\n", shmaddrstack);
     }
 
-    
+    /////////////////////
+    *shmaddrbuffersize = Buffersize;
+    //count++;
+    *shmaddrcount = count;
 
-/////////////////////
-*shmaddrbuffersize=Buffersize;
-count++;
-*shmaddrcount=count;
+    //shmaddrstack[1]=876;
 
-shmaddrstack[1]=876;
-
-/////////////////////
+    /////////////////////
     //initialize semaphore
 
     //1 is number of semaphores
-    sem = semget(keysem, 1, IPC_CREAT | 0666);
+    sem = semget(keyshmstack, Buffersize, IPC_CREAT | 0666);
 
     if (sem == -1)
     {
@@ -234,8 +232,8 @@ shmaddrstack[1]=876;
         printf("Created Semaphore  %d\n", sem);
     }
 
-    semun.val = 0; /* initial value of the semaphore, Binary semaphore */
-                   //setting value of semaphore
+    semun.val = count; /* initial value of the semaphore, Counting semaphore */
+                       //setting value of semaphore
     if (semctl(sem, 0, SETVAL, semun) == -1)
     {
         printf("Error in semctl");
@@ -246,31 +244,69 @@ shmaddrstack[1]=876;
         printf("semaphore value set %d\n ", semun.val);
     }
 
+     printf("\n\n================WORKING NOW===================\n\n");
 
-    /*
-    while(1){
-
-        //if buffer empty 
-        //produce 
+     while (1)
+     {
+         printf("buffersize is %d\n",Buffersize);
+         sleep(2);
+        //if buffer empty
+        //produce
         //then send msg to consumer
         //telling buffer is now not empty
-        if(){
-
+        count = *shmaddrcount;
+        if (count == 0)
+        {
+            printf("Buffer Empty producing\n");
+            //create item
+            int item = rand()%100;
+            //insert item in shared memory buffer
+            shmaddrstack[count] = item;
+            (*shmaddrcount)++; // increment count of elements in buffer
+            printf("Produced %d %d,count is %d \n",item, shmaddrstack[count],*shmaddrcount);
+            //send msg to consumer
+            strcpy(message.mtext, "notfreeanymore");
+            message.mtype = 88;//anynumber for prod 
+            int send_val = msgsnd(msgqid, &message, sizeof(message.mtext), !IPC_NOWAIT);
+            if (send_val == -1)
+                perror("Errror in send");
         }
         //if buffer is full
         //wait for msg from consumer
         //telling buffer is now not full
         //then produce
-        else if(){
+        else if (count == Buffersize)
+        {
+            printf("Buffer full waiting !\n");
+            //wait for msg from consumer
+            //77 is any number sent by consumer 
+            //can be replaced with pid 
+            int rec_val = msgrcv(msgqid, &message, sizeof(message.mtext),77, !IPC_NOWAIT);
+            if (rec_val == -1)
+                perror("Error in receive");
+            else
+                printf("\nMessage received: %s\n", message.mtext);
 
+            int item = rand()%100;
+            //insert item in shared memory buffer
+            shmaddrstack[count] = item;
+            (*shmaddrcount)++; // increment count of elements in buffer
+            printf("Produced %d %d,count is %d \n",item, shmaddrstack[count],*shmaddrcount);
+           
         }
         //if buffer not empty nor full
-        //produce 
-        else{
-
+        //produce
+        else
+        {
+            printf("Free space producing :D\n");
+            int item = rand()%100;
+            //insert item in shared memory buffer
+            shmaddrstack[count] = item;
+            (*shmaddrcount)++; // increment count of elements in buffer
+            printf("Produced %d %d,count is %d \n",item, shmaddrstack[count],*shmaddrcount);
+           
         }
-    }
-    */
+     }
 
     return 0;
 }
@@ -286,7 +322,7 @@ void handler(int signum)
     }
     else
     {
-        printf("Success Message Queue Freed \n");
+        printf("\nSuccess Message Queue Freed \n");
     }
 
     //free Semaphore
@@ -308,7 +344,15 @@ void handler(int signum)
     {
         printf("Success Shared Memory Freed\n");
     }
-     if (shmctl(shmidstack, IPC_RMID, (struct shmid_ds *)0) == -1)
+    if (shmctl(shmidstack, IPC_RMID, (struct shmid_ds *)0) == -1)
+    {
+        perror("Error Deleting Shared Memory !\n");
+    }
+    else
+    {
+        printf("Success Shared Memory Freed\n");
+    }
+     if (shmctl(shmidbuffersize, IPC_RMID, (struct shmid_ds *)0) == -1)
     {
         perror("Error Deleting Shared Memory !\n");
     }
