@@ -254,6 +254,8 @@ int main()
         //produce
         //then send msg to consumer
         //telling buffer is now not empty
+
+        //reload count 
         count = *shmaddrcount;
         if (count == 0)
         {
@@ -306,7 +308,7 @@ int main()
                 printf("\nMessage received: %s\n", message.mtext);
 
             //reload count
-           // count = *shmaddrcount;
+            count = *shmaddrcount;
 
             int item = rand() % 100;
             //insert item in shared memory buffer
@@ -335,7 +337,7 @@ int main()
         else
         {
             //reload count
-          //  count = *shmaddrcount;
+            count = *shmaddrcount;
             printf("Not empty nor full producing XD\n");
             int item = rand() % 100;
             //insert item in shared memory buffer
