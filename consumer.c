@@ -270,9 +270,14 @@ int main()
             count = *shmaddrcount;
             //consuming
             int itemconsumed = -1;
-            itemconsumed = shmaddrstack[count - 1];
+            itemconsumed = shmaddrstack[0];
             count--;
             (*shmaddrcount)--;
+
+             //shift all elements in buffer
+            for(int i=0;i<count;i++){
+                shmaddrstack[i]=shmaddrstack[i+1];
+            }
             //semaphore down count
             //  down(sem);
             //decrementing count
@@ -289,9 +294,14 @@ int main()
             printf("Buffer Full consuming and sending msg\n");
             //consuming
             int itemconsumed = -1;
-            itemconsumed = shmaddrstack[count - 1];
+            itemconsumed = shmaddrstack[0];
             count--;
             (*shmaddrcount)--;
+
+             //shift all elements in buffer
+            for(int i=0;i<count;i++){
+                shmaddrstack[i]=shmaddrstack[i+1];
+            }
             //semaphore down count
             // down(sem);
             //decrementing count
@@ -315,9 +325,14 @@ int main()
             printf("Not empty nor full CONSUMING XD\n");
             //consuming
             int itemconsumed = -1;
-            itemconsumed = shmaddrstack[count - 1];
+            itemconsumed = shmaddrstack[0];
             count--;
             (*shmaddrcount)--;
+
+            //shift all elements in buffer
+            for(int i=0;i<count;i++){
+                shmaddrstack[i]=shmaddrstack[i+1];
+            }
             //semaphore down count
             //  down(sem);
             //decrementing count
