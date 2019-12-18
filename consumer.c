@@ -219,40 +219,42 @@ int main()
     //initialize semaphore
 
     // //1 is number of semaphores
-    // sem = semget(keyshmcount, 1, IPC_CREAT | 0666);
+    sem = semget(keysem, 1, IPC_CREAT | 0666);
 
-    // if (sem == -1)
-    // {
-    //     perror("Error  creating semaphore");
-    //     exit(-1);
-    // }
-    // else
-    // {
-    //     printf("Created Semaphore  %d\n", sem);
-    // }
+    if (sem == -1)
+    {
+        perror("Error  creating semaphore");
+        exit(-1);
+    }
+    else
+    {
+        printf("Created Semaphore  %d\n", sem);
+    }
 
-    // semun.val = 0; /* initial value of the semaphore, counting semaphore */
-    //                //setting value of semaphore
-    // if (semctl(sem, 0, SETVAL, semun) == -1)
-    // {
-    //     printf("Error in semctl");
-    //     exit(-1);
-    // }
-    // else
-    // {
-    //     printf("semaphore value set %d\n ", semun.val);
-    // }
+    semun.val = 1; /* initial value of the semaphore, binary semaphore */
+    //setting value of semaphore
+    if (semctl(sem, 0, SETVAL, semun) == -1)
+    {
+        printf("Error in semctl");
+        exit(-1);
+    }
+    else
+    {
+        printf("semaphore value set %d\n ", semun.val);
+    }
 
     printf("\n\n================WORKING NOW===================\n\n");
 
     while (1)
     {
-        sleep(1);
+        sleep(2);
         //if buffer empty
         //wait for msg from producer
         //telling that it has produced
         //then consume
+        down(sem);
         count = *shmaddrcount;
+        up(sem);
         if (count == 0)
         {
             printf("Buffer Empty consumer waiting\n");
@@ -267,16 +269,22 @@ int main()
                 printf("\nMessage received: %s\n", message.mtext);
 
             //reload count
+            down(sem);
             count = *shmaddrcount;
+            up(sem);
             //consuming
             int itemconsumed = -1;
+            down(sem);
             itemconsumed = shmaddrstack[0];
+            up(sem);
             count--;
+            down(sem);
             (*shmaddrcount)--;
-
-             //shift all elements in buffer
-            for(int i=0;i<count;i++){
-                shmaddrstack[i]=shmaddrstack[i+1];
+            up(sem);
+            //shift all elements in buffer
+            for (int i = 0; i < count; i++)
+            {
+                shmaddrstack[i] = shmaddrstack[i + 1];
             }
             //semaphore down count
             //  down(sem);
@@ -290,18 +298,26 @@ int main()
         else if (count == Buffersize)
         {
             //reload count
+            down(sem);
             count = *shmaddrcount;
+            up(sem);
             printf("Buffer Full consuming and sending msg\n");
             //consuming
             int itemconsumed = -1;
+            down(sem);
             itemconsumed = shmaddrstack[0];
+            up(sem);
             count--;
+            down(sem);
             (*shmaddrcount)--;
-
-             //shift all elements in buffer
-            for(int i=0;i<count;i++){
-                shmaddrstack[i]=shmaddrstack[i+1];
+            up(sem);
+            //shift all elements in buffer
+            down(sem);
+            for (int i = 0; i < count; i++)
+            {
+                shmaddrstack[i] = shmaddrstack[i + 1];
             }
+            up(sem);
             //semaphore down count
             // down(sem);
             //decrementing count
@@ -318,21 +334,27 @@ int main()
         }
         //if not empty nor full
         //consume
-        else
+        else if (count >= 0)
         {
             //reload count
             count = *shmaddrcount;
             printf("Not empty nor full CONSUMING XD\n");
             //consuming
             int itemconsumed = -1;
+            down(sem);
             itemconsumed = shmaddrstack[0];
+            up(sem);
+            down(sem);
             count--;
             (*shmaddrcount)--;
-
+            up(sem);
             //shift all elements in buffer
-            for(int i=0;i<count;i++){
-                shmaddrstack[i]=shmaddrstack[i+1];
+            down(sem);
+            for (int i = 0; i < count; i++)
+            {
+                shmaddrstack[i] = shmaddrstack[i + 1];
             }
+            up(sem);
             //semaphore down count
             //  down(sem);
             //decrementing count
