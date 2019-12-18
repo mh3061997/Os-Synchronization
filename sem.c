@@ -50,18 +50,18 @@ void up(int sem)
 void do_child(int sem1, int sem2)
 {
     printf("A\n");
-    up(sem1);
+    //up(sem1);
     printf("B\n");
-    down(sem2);
+  //  down(sem2);
     printf("C\n");
 }
 
 void do_parent(int sem1, int sem2)
 {
     printf("G\n");
-    down(sem1);
+  //  down(sem1);
     printf("F\n");
-    up(sem2);
+  //  up(sem2);
     printf("E\n");
 }
 

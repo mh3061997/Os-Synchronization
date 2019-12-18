@@ -92,7 +92,7 @@ int count;
 
 int main()
 {
-    sleep(3);
+    sleep(2);
     //setting fn handler for sigint to free ipc
     /*HANDLER FN SEE DONT SEE CHANGES IN GLOBAL VAR
      AFTER HANDLER IS ASSIGNED
@@ -103,11 +103,11 @@ int main()
     pid_t pid;
 
     //unique ipc key
-    key_t keymsg = ftok(getenv("PWD"), 16);      //PWD path to current directory , 99 any unique number
-    key_t keyshmstack = ftok(getenv("PWD"), 15); //PWD path to current directory , 98 any unique number
-    key_t keyshmcount = ftok(getenv("PWD"), 13); //PWD path to current directory , 98 any unique number
-    key_t keysem = ftok(getenv("PWD"), 14);      //PWD path to current directory , 97 any unique number
-    key_t keybufsize = ftok(getenv("PWD"), 17);  //PWD path to current directory , 97 any unique number
+    key_t keymsg = ftok(getenv("PWD"), 18);      //PWD path to current directory , 99 any unique number
+    key_t keyshmstack = ftok(getenv("PWD"), 19); //PWD path to current directory , 98 any unique number
+    key_t keyshmcount = ftok(getenv("PWD"), 20); //PWD path to current directory , 98 any unique number
+    key_t keysem = ftok(getenv("PWD"), 21);      //PWD path to current directory , 97 any unique number
+    key_t keybufsize = ftok(getenv("PWD"), 22);  //PWD path to current directory , 97 any unique number
 
     //initialize message queue
     //IPC_CREAT creates msg if not exist if exist return it's id
@@ -218,36 +218,36 @@ int main()
     /////////////////////
     //initialize semaphore
 
-    //1 is number of semaphores
-    sem = semget(keysem, 1, IPC_CREAT | 0666);
+    // //1 is number of semaphores
+    // sem = semget(keyshmcount, 1, IPC_CREAT | 0666);
 
-    if (sem == -1)
-    {
-        perror("Error  creating semaphore");
-        exit(-1);
-    }
-    else
-    {
-        printf("Created Semaphore  %d\n", sem);
-    }
+    // if (sem == -1)
+    // {
+    //     perror("Error  creating semaphore");
+    //     exit(-1);
+    // }
+    // else
+    // {
+    //     printf("Created Semaphore  %d\n", sem);
+    // }
 
-    semun.val = 0; /* initial value of the semaphore, Binary semaphore */
-                   //setting value of semaphore
-    if (semctl(sem, 0, SETVAL, semun) == -1)
-    {
-        printf("Error in semctl");
-        exit(-1);
-    }
-    else
-    {
-        printf("semaphore value set %d\n ", semun.val);
-    }
+    // semun.val = 0; /* initial value of the semaphore, counting semaphore */
+    //                //setting value of semaphore
+    // if (semctl(sem, 0, SETVAL, semun) == -1)
+    // {
+    //     printf("Error in semctl");
+    //     exit(-1);
+    // }
+    // else
+    // {
+    //     printf("semaphore value set %d\n ", semun.val);
+    // }
 
     printf("\n\n================WORKING NOW===================\n\n");
 
     while (1)
     {
-        sleep(3);
+        sleep(1);
         //if buffer empty
         //wait for msg from producer
         //telling that it has produced
@@ -270,11 +270,14 @@ int main()
             count = *shmaddrcount;
             //consuming
             int itemconsumed = -1;
-            itemconsumed = shmaddrstack[count-1];
-
-            //decrementing count 
+            itemconsumed = shmaddrstack[count - 1];
+            count--;
             (*shmaddrcount)--;
-            printf("Consumed item %d count now %d\n", itemconsumed,*shmaddrcount);
+            //semaphore down count
+            //  down(sem);
+            //decrementing count
+            //(*shmaddrcount)--;
+            printf("Consumed item %d count now %d\n", itemconsumed, *shmaddrcount);
         }
         //if buffer full
         //consume
@@ -284,14 +287,17 @@ int main()
             //reload count
             count = *shmaddrcount;
             printf("Buffer Full consuming and sending msg\n");
-             //consuming
+            //consuming
             int itemconsumed = -1;
-            itemconsumed = shmaddrstack[count-1];
-
-            //decrementing count 
+            itemconsumed = shmaddrstack[count - 1];
+            count--;
             (*shmaddrcount)--;
-            printf("Consumed item %d count now %d\n", itemconsumed,*shmaddrcount);
-      
+            //semaphore down count
+            // down(sem);
+            //decrementing count
+            //(*shmaddrcount)--;
+            printf("Consumed item %d count now %d\n", itemconsumed, *shmaddrcount);
+
             //send msg to producer telling buffer now not full
             //send msg to consumer
             strcpy(message.mtext, "notfullanymore");
@@ -307,13 +313,16 @@ int main()
             //reload count
             count = *shmaddrcount;
             printf("Not empty nor full CONSUMING XD\n");
-              //consuming
+            //consuming
             int itemconsumed = -1;
-            itemconsumed = shmaddrstack[count-1];
-
-            //decrementing count 
+            itemconsumed = shmaddrstack[count - 1];
+            count--;
             (*shmaddrcount)--;
-            printf("Consumed item %d count now %d\n", itemconsumed,*shmaddrcount);
+            //semaphore down count
+            //  down(sem);
+            //decrementing count
+            //(*shmaddrcount)--;
+            printf("Consumed item %d count now %d\n", itemconsumed, *shmaddrcount);
         }
     }
     return 0;

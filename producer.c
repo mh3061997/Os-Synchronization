@@ -97,17 +97,17 @@ int main()
      AFTER HANDLER IS ASSIGNED
     */
     signal(SIGINT, handler);
-    // sleep(2); // will be deleted just to invoke sigint to delete shm
+    sleep(2); // will be deleted just to invoke sigint to delete shm
 
     //pid
     pid_t pid;
 
     //unique ipc key
-    key_t keymsg = ftok(getenv("PWD"), 16);      //PWD path to current directory , 99 any unique number
-    key_t keyshmstack = ftok(getenv("PWD"), 15); //PWD path to current directory , 98 any unique number
-    key_t keyshmcount = ftok(getenv("PWD"), 13); //PWD path to current directory , 98 any unique number
-    key_t keysem = ftok(getenv("PWD"), 14);      //PWD path to current directory , 97 any unique number
-    key_t keybufsize = ftok(getenv("PWD"), 17);  //PWD path to current directory , 97 any unique number
+    key_t keymsg = ftok(getenv("PWD"), 18);      //PWD path to current directory , 99 any unique number
+    key_t keyshmstack = ftok(getenv("PWD"), 19); //PWD path to current directory , 98 any unique number
+    key_t keyshmcount = ftok(getenv("PWD"), 20); //PWD path to current directory , 98 any unique number
+    key_t keysem = ftok(getenv("PWD"), 21);      //PWD path to current directory , 97 any unique number
+    key_t keybufsize = ftok(getenv("PWD"), 22);  //PWD path to current directory , 97 any unique number
 
     //initialize message queue
     //IPC_CREAT creates msg if not exist if exist return it's id
@@ -210,46 +210,46 @@ int main()
     }
 
     /////////////////////
-    *shmaddrbuffersize = Buffersize;
+    (*shmaddrbuffersize) = Buffersize;
     //count++;
-    *shmaddrcount = count;
+    (*shmaddrcount) = count;
 
     //shmaddrstack[1]=876;
 
     /////////////////////
     //initialize semaphore
 
-    //1 is number of semaphores
-    sem = semget(keyshmstack, Buffersize, IPC_CREAT | 0666);
+    // //1 is number of semaphores
+    // sem = semget(shmaddrcount, sizeof(int), IPC_CREAT | 0666);
 
-    if (sem == -1)
-    {
-        perror("Error  creating semaphore");
-        exit(-1);
-    }
-    else
-    {
-        printf("Created Semaphore  %d\n", sem);
-    }
+    // if (sem == -1)
+    // {
+    //     perror("Error  creating semaphore");
+    //     exit(-1);
+    // }
+    // else
+    // {
+    //     printf("Created Semaphore  %d\n", sem);
+    // }
 
-    semun.val = count; /* initial value of the semaphore, Counting semaphore */
-                       //setting value of semaphore
-    if (semctl(sem, 0, SETVAL, semun) == -1)
-    {
-        printf("Error in semctl");
-        exit(-1);
-    }
-    else
-    {
-        printf("semaphore value set %d\n ", semun.val);
-    }
+    // semun.val = count; /* initial value of the semaphore, Counting semaphore */
+    //                    //setting value of semaphore
+    // if (semctl(sem, 0, SETVAL, semun) == -1)
+    // {
+    //     printf("Error in semctl");
+    //     exit(-1);
+    // }
+    // else
+    // {
+    //     printf("semaphore value set %d\n ", semun.val);
+    // }
     printf("buffersize is %d\n", Buffersize);
 
     printf("\n\n================WORKING NOW===================\n\n");
 
     while (1)
     {
-        sleep(6);
+        sleep(1);
         //if buffer empty
         //produce
         //then send msg to consumer
@@ -262,8 +262,25 @@ int main()
             int item = rand() % 100;
             //insert item in shared memory buffer
             shmaddrstack[count] = item;
-            (*shmaddrcount)++; // increment count of elements in buffer
-            printf("Produced %d %d,count is %d \n", item, shmaddrstack[count], *shmaddrcount);
+            count++;
+            (*shmaddrcount) = count;
+            //Semaphore up count
+
+            // semun.val = count + 1; /* initial value of the semaphore, Counting semaphore */
+            //                        //setting value of semaphore
+            // if (semctl(sem, 0, SETVAL, semun) == -1)
+            // {
+            //     printf("Error in semctl");
+            //     exit(-1);
+            // }
+            // else
+            // {
+            //     // printf("semaphore value set %d\n ", semun.val);
+            // }
+
+            // (*shmaddrcount)++; // increment count of elements in buffer
+
+            printf("Produced %d %d,count is %d \n", item, shmaddrstack[count-1], *shmaddrcount);
             //send msg to consumer
             strcpy(message.mtext, "notfreeanymore");
             message.mtype = 88; //anynumber for prod
@@ -277,8 +294,7 @@ int main()
         //then produce
         else if (count >= Buffersize)
         {
-            //reload count
-            count = *shmaddrcount;
+
             printf("Buffer full waiting !\n");
             //wait for msg from consumer
             //77 is any number sent by consumer
@@ -289,24 +305,58 @@ int main()
             else
                 printf("\nMessage received: %s\n", message.mtext);
 
+            //reload count
+           // count = *shmaddrcount;
+
             int item = rand() % 100;
             //insert item in shared memory buffer
             shmaddrstack[count] = item;
-            (*shmaddrcount)++; // increment count of elements in buffer
-            printf("Produced %d %d,count is %d \n", item, shmaddrstack[count], *shmaddrcount);
+            count++;
+            *shmaddrcount = count;
+            //Semaphore up count
+            // semun.val = count; /* initial value of the semaphore, Counting semaphore */
+            //                    //setting value of semaphore
+            // if (semctl(sem, 0, SETVAL, semun) == -1)
+            // {
+            //     printf("Error in semctl");
+            //     exit(-1);
+            // }
+            // else
+            // {
+            //     // printf("semaphore value set %d\n ", semun.val);
+            // }
+
+            // (*shmaddrcount)++; // increment count of elements in buffer
+
+            printf("Produced %d %d,count is %d \n", item, shmaddrstack[count-1], *shmaddrcount);
         }
         //if buffer not empty nor full
         //produce
         else
         {
             //reload count
-            count = *shmaddrcount;
+          //  count = *shmaddrcount;
             printf("Not empty nor full producing XD\n");
             int item = rand() % 100;
             //insert item in shared memory buffer
             shmaddrstack[count] = item;
-            (*shmaddrcount)++; // increment count of elements in buffer
-            printf("Produced %d %d,count is %d \n", item, shmaddrstack[count], *shmaddrcount);
+            count++;
+            *shmaddrcount = count;
+            //Semaphore up count
+            // semun.val = count; /* initial value of the semaphore, Counting semaphore */
+            //                    //setting value of semaphore
+            // if (semctl(sem, 0, SETVAL, semun) == -1)
+            // {
+            //     printf("Error in semctl");
+            //     exit(-1);
+            // }
+            // else
+            // {
+            //     // printf("semaphore value set %d\n ", semun.val);
+            // }
+
+            // (*shmaddrcount)++; // increment count of elements in buffer
+            printf("Produced %d %d,count is %d \n", item, shmaddrstack[count-1], *shmaddrcount);
         }
     }
 
